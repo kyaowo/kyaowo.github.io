@@ -37,6 +37,11 @@
         .master-dirt { color: #a05a2c; font-weight: bold; }
         .master-turf { color: #2e7d32; font-weight: bold; }
 
+        /* Sticky Filter Bar */
+        .filter-bar { position: sticky; top: 0; background: #f9f9f9; padding: 15px; display: flex; justify-content: center; gap: 20px; border-top: 2px solid #ccc; border-bottom: 2px solid #ccc; z-index: 20; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.2); flex-wrap: wrap; margin-bottom: 15px; }
+        .filter-bar label { font-weight: bold; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 5px; font-size: 1.05em; }
+        .filter-bar input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
+
         /* Interactive Styling Rules for Calendar Output */
         .surface-dirt { font-weight: bold; font-style: italic; }
         .distance-sprint { color: rgb(0, 128, 255); }
@@ -44,12 +49,13 @@
         .distance-medium { color: rgb(220, 160, 0); }
         .distance-long { color: rgb(255, 0, 0); }
         
-        /* Clickable Calendar Races */
-        .clickable-race { cursor: pointer; padding: 2px 0; transition: opacity 0.2s; }
+        /* Clickable Calendar Races & Greyed Out Logic */
+        .clickable-race { cursor: pointer; padding: 2px 0; transition: opacity 0.2s, color 0.2s; }
         .clickable-race:hover { opacity: 0.6; text-decoration: line-through; }
+        .greyed-out { color: #bbb !important; font-weight: normal !important; font-style: normal !important; }
 
         /* Calendar Output Grids Component Layout */
-        .grid-container { display: flex; flex-direction: column; gap: 40px; margin-top: 20px; }
+        .grid-container { display: flex; flex-direction: column; gap: 40px; margin-top: 10px; }
         .tier-section { border: 2px solid #333; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 900px; }
         .tier-title { text-align: center; font-weight: bold; font-size: 1.4em; background: #e6d0c4; padding: 8px; border-bottom: 2px solid #333; margin: -10px -10px 10px -10px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
         
@@ -173,7 +179,7 @@
                 <tr class="g3-row"><td>Aichi Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
                 <tr class="g3-row"><td>Keisei Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jan</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
                 <tr class="g3-row"><td>Silk Road Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
-                <tr class="g3-row"><td>Negishi Stakes</td><td class="master-dirt">Sprint</td><td>Sprint</td><td>Late Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Negishi Stakes</td><td class="master-dirt">Dirt</td><td>Sprint</td><td>Late Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
                 <tr class="g3-row"><td>Kisaragi Sho</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Feb</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
                 <tr class="g3-row"><td>Tokyo Shimbun Hai</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
                 <tr class="g3-row"><td>Queen Cup</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Feb</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
@@ -237,6 +243,15 @@
                 <tr class="g3-row"><td>Turquoise Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="filter-bar" id="calendarFilterBar">
+        <label><input type="checkbox" class="cal-filter" value="surface-turf" onchange="applyCalendarFilters()"> Turf</label>
+        <label><input type="checkbox" class="cal-filter" value="surface-dirt" onchange="applyCalendarFilters()"> Dirt</label>
+        <label><input type="checkbox" class="cal-filter" value="distance-sprint" onchange="applyCalendarFilters()"> Sprint</label>
+        <label><input type="checkbox" class="cal-filter" value="distance-mile" onchange="applyCalendarFilters()"> Mile</label>
+        <label><input type="checkbox" class="cal-filter" value="distance-medium" onchange="applyCalendarFilters()"> Medium</label>
+        <label><input type="checkbox" class="cal-filter" value="distance-long" onchange="applyCalendarFilters()"> Long</label>
     </div>
 
     <div class="grid-container">
@@ -404,7 +419,7 @@
             reader.onload = function(e) {
                 try {
                     const importedState = JSON.parse(e.target.result);
-                    pushStateToUndo(); // Save state before importing so users can undo an accidental import
+                    pushStateToUndo();
                     applyState(importedState);
                     updateCalendar();
                     currentState = getCurrentState();
@@ -413,7 +428,38 @@
                 }
             };
             reader.readAsText(file);
-            event.target.value = ''; // Reset input to allow importing the same file again if needed
+            event.target.value = ''; 
+        }
+
+        function applyCalendarFilters() {
+            const checkedFilters = Array.from(document.querySelectorAll('.cal-filter:checked')).map(cb => cb.value);
+            const allRaces = document.querySelectorAll('.clickable-race');
+
+            if (checkedFilters.length === 0) {
+                allRaces.forEach(race => race.classList.remove('greyed-out'));
+                return;
+            }
+
+            const activeSurfaces = checkedFilters.filter(f => f.startsWith('surface-'));
+            const activeDistances = checkedFilters.filter(f => f.startsWith('distance-'));
+
+            allRaces.forEach(race => {
+                let surfaceMatch = true;
+                let distanceMatch = true;
+
+                if (activeSurfaces.length > 0) {
+                    surfaceMatch = activeSurfaces.some(f => race.classList.contains(f));
+                }
+                if (activeDistances.length > 0) {
+                    distanceMatch = activeDistances.some(f => race.classList.contains(f));
+                }
+
+                if (surfaceMatch && distanceMatch) {
+                    race.classList.remove('greyed-out');
+                } else {
+                    race.classList.add('greyed-out');
+                }
+            });
         }
 
         function updateCalendar() {
@@ -446,7 +492,14 @@
                                 textLine.innerText = raceName;
                                 textLine.classList.add('clickable-race');
                                 
-                                // Clicking grid text checks the box in table
+                                // Identify characteristics for filtering
+                                if (surface === 'dirt') textLine.classList.add('surface-dirt');
+                                else if (surface === 'turf') textLine.classList.add('surface-turf');
+
+                                if (['sprint', 'mile', 'medium', 'long'].includes(distance)) {
+                                    textLine.classList.add(`distance-${distance}`);
+                                }
+
                                 textLine.onclick = function() {
                                     pushStateToUndo();
                                     checkbox.checked = !checkbox.checked;
@@ -454,10 +507,6 @@
                                     currentState = getCurrentState();
                                 };
 
-                                if (surface === 'dirt') textLine.classList.add('surface-dirt');
-                                if (['sprint', 'mile', 'medium', 'long'].includes(distance)) {
-                                    textLine.classList.add(`distance-${distance}`);
-                                }
                                 targetCell.appendChild(textLine);
                             }
                         }
@@ -467,6 +516,9 @@
             
             allChecked = (uncheckedCount === 0);
             document.getElementById('toggleAllBtn').innerText = allChecked ? "Uncheck All" : "Check All";
+            
+            // Re-evaluate filters after drawing calendar items
+            applyCalendarFilters();
         }
 
         // Initialize script logic
