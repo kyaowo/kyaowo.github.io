@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uma Completionist Title Checklist</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; color: #333; }
+        h1 { color: #111; margin-bottom: 5px; }
+        .instructions { margin-bottom: 20px; color: #666; font-size: 0.95em; }
+        
+        /* Search Bar & Button Styling */
+        .controls-container { display: flex; align-items: center; margin-bottom: 15px; gap: 10px; flex-wrap: wrap; }
+        #searchInput { flex-grow: 1; max-width: 400px; padding: 10px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .action-btn { padding: 10px 15px; font-size: 0.95em; cursor: pointer; border: 1px solid #aaa; border-radius: 4px; background-color: #e6d0c4; color: #333; font-weight: bold; transition: background-color 0.2s; }
+        .action-btn:hover { background-color: #dcbca9; }
+        .action-btn:active { background-color: #cfa893; }
+
+        /* Master Table Styling */
+        .table-container { overflow-x: auto; max-height: 500px; margin-bottom: 30px; background: white; border: 1px solid #ccc; border-radius: 4px; padding: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 0.95em; }
+        th { background-color: #f2f2f2; font-weight: bold; position: sticky; top: 0; z-index: 10; }
+        tr:hover:not(.category-header) { background-color: #f5f5f5; }
+        
+        /* Collapsible Category Headers */
+        .category-header { background-color: #e0e0e0; cursor: pointer; user-select: none; }
+        .category-header th { position: static; background-color: #e6d0c4; color: #333; font-size: 1.1em; border-top: 2px solid #aaa; }
+        .category-header th:hover { background-color: #dcbca9; }
+        .toggle-icon { float: right; font-size: 0.8em; line-height: 1.5; }
+
+        /* Utility Classes for Hiding Rows */
+        .collapsed-row { display: none !important; }
+        .search-hidden { display: none !important; }
+
+        /* Master Table Surface Colors */
+        .master-dirt { color: #a05a2c; font-weight: bold; }
+        .master-turf { color: #2e7d32; font-weight: bold; }
+
+        /* Interactive Styling Rules for Calendar Output */
+        .surface-dirt { font-weight: bold; font-style: italic; }
+        .distance-sprint { color: rgb(0, 128, 255); }
+        .distance-mile { color: rgb(0, 150, 0); }
+        .distance-medium { color: rgb(220, 160, 0); }
+        .distance-long { color: rgb(255, 0, 0); }
+        
+        /* Clickable Calendar Races */
+        .clickable-race { cursor: pointer; padding: 2px 0; transition: opacity 0.2s; }
+        .clickable-race:hover { opacity: 0.6; text-decoration: line-through; }
+
+        /* Calendar Output Grids Component Layout */
+        .grid-container { display: flex; flex-direction: column; gap: 40px; margin-top: 20px; }
+        .tier-section { border: 2px solid #333; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 900px; }
+        .tier-title { text-align: center; font-weight: bold; font-size: 1.4em; background: #e6d0c4; padding: 8px; border-bottom: 2px solid #333; margin: -10px -10px 10px -10px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
+        
+        .calendar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .calendar-box { border: 1px solid #888; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
+        .grey-value-box { background-color: #f2f2f2; min-height: 50px; padding: 6px; white-space: pre-line; border-bottom: 1px solid #888; font-size: 0.95em; line-height: 1.3; flex-grow: 1; }
+        .date-label { text-align: center; font-weight: bold; padding: 4px; font-size: 0.85em; background: white; color: #555; }
+    </style>
+</head>
+<body>
+
+    <h1>Uma Completionist Title Checklist</h1>
+    <p class="instructions">Check a race in the table or click its name in the calendar grid below to mark it as completed.</p>
+
+    <div class="controls-container">
+        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search for a race by name...">
+        <button class="action-btn" id="toggleAllBtn" onclick="toggleAll()">Check All</button>
+        <button class="action-btn" onclick="undo()">Undo</button>
+        <button class="action-btn" onclick="exportData()">Export Save</button>
+        <button class="action-btn" onclick="document.getElementById('importFile').click()">Import Save</button>
+        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+    </div>
+
+    <div class="table-container">
+        <table id="masterTable">
+            <thead>
+                <tr>
+                    <th>Race Name</th>
+                    <th>Surface</th>
+                    <th>Distance</th>
+                    <th>Month</th>
+                    <th>Year</th>
+                    <th>Completed</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- G1 Group -->
+                <tr class="category-header" onclick="toggleCategory('g1')">
+                    <th colspan="6">G1 <span class="toggle-icon" id="g1-icon">▼</span></th>
+                </tr>
+                <tr class="g1-row"><td>February Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Late Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Takamatsunomiya Kinen</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Mar</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Osaka Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Mar</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Oka Sho</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Apr</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Satsuki Sho</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Apr</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Tenno Sho (Spring)</td><td class="master-turf">Turf</td><td>Long</td><td>Late Apr</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>NHK Mile Cup</td><td class="master-turf">Turf</td><td>Mile</td><td>Early May</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Victoria Mile</td><td class="master-turf">Turf</td><td>Mile</td><td>Early May</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Japanese Oaks</td><td class="master-turf">Turf</td><td>Medium</td><td>Late May</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Japanese Derby</td><td class="master-turf">Turf</td><td>Medium</td><td>Late May</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Yasuda Kinen</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Jun</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Takarazuka Kinen</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Jun</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Sprinter's Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Sep</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Shuka Sho</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Oct</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Kikuka Sho</td><td class="master-turf">Turf</td><td>Long</td><td>Late Oct</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Tenno Sho (Autumn)</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Oct</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Queen Elizabeth II Cup</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Mile Championship</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Japan Cup</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Champion's Cup</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Early Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Hanshin Juvenile Fillies</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Dec</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Asahi Hai Futurity Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Dec</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Arima Kinen</td><td class="master-turf">Turf</td><td>Long</td><td>Late Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Hopeful Stakes</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Dec</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Tokyo Daishoten</td><td class="master-dirt">Dirt</td><td>Medium</td><td>Late Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>JBC Classic</td><td class="master-dirt">Dirt</td><td>Medium</td><td>Early Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>JBC Sprint</td><td class="master-dirt">Dirt</td><td>Sprint</td><td>Early Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>JBC Ladies' Classic</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Early Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Japan Dirt Derby</td><td class="master-dirt">Dirt</td><td>Medium</td><td>Early Jul</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g1-row"><td>Teio Sho</td><td class="master-dirt">Dirt</td><td>Medium</td><td>Late Jun</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+
+                <!-- G2 Group -->
+                <tr class="category-header" onclick="toggleCategory('g2')">
+                    <th colspan="6">G2 <span class="toggle-icon" id="g2-icon">▼</span></th>
+                </tr>
+                <tr class="g2-row"><td>Nikkei Shinshun Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Tokai Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Late Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>American JCC</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Kyoto Kinen</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Nakayama Kinen</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Tulip Sho</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Mar</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Yayoi Sho</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Mar</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Kinko Sho</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Mar</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Fillies' Revue</td><td class="master-turf">Turf</td><td>Sprint</td><td>Early Mar</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Hanshin Daishoten</td><td class="master-turf">Turf</td><td>Long</td><td>Late Mar</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Spring Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Mar</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Nikkei Sho</td><td class="master-turf">Turf</td><td>Long</td><td>Late Mar</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Hanshin Umamusume Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Apr</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>New Zealand Trophy</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Apr</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Yomiuri Milers Cup</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Apr</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Flora Stakes</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Apr</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Aoba Sho</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Apr</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Kyoto Shimbun Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Early May</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Keio Hai Spring Cup</td><td class="master-turf">Turf</td><td>Sprint</td><td>Early May</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Meguro Kinen</td><td class="master-turf">Turf</td><td>Long</td><td>Late May</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Sapporo Kinen</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Aug</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Centaur Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Early Sep</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Rose Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Sep</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>St. Lite Kinen</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Sep</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Kobe Shimbun Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Sep</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>All Comers</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Sep</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Mainichi Okan</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Oct</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Kyoto Daishoten</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Oct</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Fuchu Umamusume Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Oct</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Fuji Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Oct</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Swan Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Oct</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Keio Hai Junior Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Early Nov</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Copa Republica Argentina</td><td class="master-turf">Turf</td><td>Long</td><td>Early Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Daily Hai Junior Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Nov</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Stayer's Stakes</td><td class="master-turf">Turf</td><td>Long</td><td>Early Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g2-row"><td>Hanshin Cup</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+
+                <!-- G3 Group -->
+                <tr class="category-header" onclick="toggleCategory('g3')">
+                    <th colspan="6">G3 <span class="toggle-icon" id="g3-icon">▼</span></th>
+                </tr>
+                <tr class="g3-row"><td>Kyoto Kimpai</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Nakayama Kimpai</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Shinzan Kinen</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Jan</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Fairy Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Jan</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Aichi Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Keisei Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jan</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Silk Road Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Negishi Stakes</td><td class="master-dirt">Sprint</td><td>Sprint</td><td>Late Jan</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Kisaragi Sho</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Feb</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Tokyo Shimbun Hai</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Queen Cup</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Feb</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Kyodo News Hai</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Feb</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Kyoto Umamusume Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Diamond Stakes</td><td class="master-turf">Turf</td><td>Long</td><td>Late Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Kokura Daishoten</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Arlington Cup</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Apr</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Hankyu Hai</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Feb</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Ocean Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Early Mar</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Nakayama Umamusume Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Mar</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Falcon Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Mar</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Flower Cup</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Mar</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Mainichi Hai</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Mar</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>March Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Late Mar</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Lord Derby Challenge Trophy</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Apr</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Antares Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Early Apr</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Fukushima Umamusume Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Apr</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Niigata Daishoten</td><td class="master-turf">Turf</td><td>Medium</td><td>Early May</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Heian Stakes</td><td class="master-dirt">Dirt</td><td>Medium</td><td>Late May</td><td>Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Aoi Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late May</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Naruo Kinen</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jun</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Mermaid Stakes</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jun</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Epsom Cup</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Jun</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Unicorn Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Late Jun</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Hakodate Sprint Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Jun</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>CBC Sho</td><td class="master-turf">Turf</td><td>Sprint</td><td>Early Jul</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Radio Nikkei Sho</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Jul</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Procyon Stakes</td><td class="master-dirt">Dirt</td><td>Sprint</td><td>Early Jul</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Tanabata Sho</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jul</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Hakodate Kinen</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Jul</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Chukyo Kinen</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Jul</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Hakodate Junior Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Jul</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Ibis Summer Dash</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Jul</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Queen Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Jul</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Kokura Kinen</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Aug</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Leopard Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Early Aug</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Sekiya Kinen</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Aug</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Elm Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Early Aug</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Kitakyushu Kinen</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Aug</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Niigata Junior Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Aug</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Keeneland Cup</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Aug</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Sapporo Junior Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Sep</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Kokura Junior Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Early Sep</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Niigata Kinen</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Sep</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Shion Stakes</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Sep</td><td>Classic</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Keisei Hai Autumn Handicap</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Sep</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Sirius Stakes</td><td class="master-dirt">Dirt</td><td>Medium</td><td>Late Sep</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Saudi Arabia Royal Cup</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Oct</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Artemis Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Oct</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Fantasy Stakes</td><td class="master-turf">Turf</td><td>Sprint</td><td>Early Nov</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Miyako Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Early Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Musashino Stakes</td><td class="master-dirt">Dirt</td><td>Mile</td><td>Early Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Fukushima Kinen</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Tokyo Sports Hai Junior Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Late Nov</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Kyoto Junior Stakes</td><td class="master-turf">Turf</td><td>Medium</td><td>Late Nov</td><td>Junior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Keihan Hai</td><td class="master-turf">Turf</td><td>Sprint</td><td>Late Nov</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Challenge Cup</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Chunichi Shimbun Hai</td><td class="master-turf">Turf</td><td>Medium</td><td>Early Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Capella Stakes</td><td class="master-dirt">Dirt</td><td>Sprint</td><td>Early Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+                <tr class="g3-row"><td>Turquoise Stakes</td><td class="master-turf">Turf</td><td>Mile</td><td>Early Dec</td><td>Classic Senior</td><td><input type="checkbox" onchange="handleCheckboxChange()"></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="grid-container">
+        <!-- Junior Grid -->
+        <div class="tier-section">
+            <div class="tier-title">Junior</div>
+            <div class="calendar-grid" id="grid-Junior"></div>
+        </div>
+        <!-- Classic Grid -->
+        <div class="tier-section">
+            <div class="tier-title">Classic</div>
+            <div class="calendar-grid" id="grid-Classic"></div>
+        </div>
+        <!-- Senior Grid -->
+        <div class="tier-section">
+            <div class="tier-title">Senior</div>
+            <div class="calendar-grid" id="grid-Senior"></div>
+        </div>
+    </div>
+
+    <script>
+        const dates = [
+            "Early Jan", "Late Jan", "Early Feb", "Late Feb", 
+            "Early Mar", "Late Mar", "Early Apr", "Late Apr", 
+            "Early May", "Late May", "Early Jun", "Late Jun", 
+            "Early Jul", "Late Jul", "Early Aug", "Late Aug", 
+            "Early Sep", "Late Sep", "Early Oct", "Late Oct", 
+            "Early Nov", "Late Nov", "Early Dec", "Late Dec"
+        ];
+        const tiers = ["Junior", "Classic", "Senior"];
+        let allChecked = false;
+        
+        // State Management Variables
+        let undoStack = [];
+        let currentState = {};
+
+        function buildCalendarStructures() {
+            tiers.forEach(tier => {
+                const container = document.getElementById(`grid-${tier}`);
+                dates.forEach(date => {
+                    const box = document.createElement('div');
+                    box.className = 'calendar-box';
+                    
+                    const valBox = document.createElement('div');
+                    valBox.className = 'grey-value-box';
+                    valBox.id = `${tier}-${date.replace(' ', '-')}`; 
+                    
+                    const lblBox = document.createElement('div');
+                    lblBox.className = 'date-label';
+                    lblBox.innerText = date;
+                    
+                    box.appendChild(valBox);
+                    box.appendChild(lblBox);
+                    container.appendChild(box);
+                });
+            });
+        }
+
+        // --- Core State Management ---
+        function getCurrentState() {
+            const state = {};
+            document.querySelectorAll('#masterTable tbody tr:not(.category-header)').forEach(row => {
+                const raceName = row.cells[0].innerText.trim();
+                const isChecked = row.cells[5].querySelector('input[type="checkbox"]').checked;
+                if (raceName) state[raceName] = isChecked;
+            });
+            return state;
+        }
+
+        function applyState(state) {
+            document.querySelectorAll('#masterTable tbody tr:not(.category-header)').forEach(row => {
+                const raceName = row.cells[0].innerText.trim();
+                if (state[raceName] !== undefined) {
+                    row.cells[5].querySelector('input[type="checkbox"]').checked = state[raceName];
+                }
+            });
+        }
+
+        function pushStateToUndo() {
+            undoStack.push(JSON.parse(JSON.stringify(currentState))); // deep copy
+            if (undoStack.length > 50) undoStack.shift();
+        }
+
+        function handleCheckboxChange() {
+            pushStateToUndo();
+            updateCalendar();
+            currentState = getCurrentState();
+        }
+
+        // --- Features ---
+        function toggleCategory(category) {
+            const rows = document.querySelectorAll(`.${category}-row`);
+            const icon = document.getElementById(`${category}-icon`);
+            let isCollapsed = false;
+
+            rows.forEach(row => {
+                if (row.classList.contains('collapsed-row')) {
+                    row.classList.remove('collapsed-row');
+                    isCollapsed = false;
+                } else {
+                    row.classList.add('collapsed-row');
+                    isCollapsed = true;
+                }
+            });
+
+            icon.innerText = isCollapsed ? '►' : '▼';
+        }
+
+        function filterTable() {
+            const input = document.getElementById("searchInput").value.toUpperCase();
+            const table = document.getElementById("masterTable");
+            const tr = table.getElementsByTagName("tr");
+
+            for (let i = 1; i < tr.length; i++) {
+                if (tr[i].classList.contains('category-header')) continue;
+
+                const td = tr[i].getElementsByTagName("td")[0];
+                if (td) {
+                    const txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(input) > -1) {
+                        tr[i].classList.remove('search-hidden');
+                    } else {
+                        tr[i].classList.add('search-hidden');
+                    }
+                }
+            }
+        }
+
+        function toggleAll() {
+            pushStateToUndo();
+            allChecked = !allChecked;
+            const checkboxes = document.querySelectorAll('#masterTable tbody input[type="checkbox"]');
+            
+            checkboxes.forEach(cb => {
+                cb.checked = allChecked;
+            });
+            
+            document.getElementById('toggleAllBtn').innerText = allChecked ? "Uncheck All" : "Check All";
+            updateCalendar();
+            currentState = getCurrentState();
+        }
+
+        function undo() {
+            if (undoStack.length === 0) return;
+            const previousState = undoStack.pop();
+            applyState(previousState);
+            updateCalendar();
+            currentState = previousState;
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(getCurrentState()));
+            const downloadNode = document.createElement('a');
+            downloadNode.setAttribute("href", dataStr);
+            downloadNode.setAttribute("download", "uma_checklist_save.json");
+            document.body.appendChild(downloadNode);
+            downloadNode.click();
+            downloadNode.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedState = JSON.parse(e.target.result);
+                    pushStateToUndo(); // Save state before importing so users can undo an accidental import
+                    applyState(importedState);
+                    updateCalendar();
+                    currentState = getCurrentState();
+                } catch (err) {
+                    alert("Invalid save file.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset input to allow importing the same file again if needed
+        }
+
+        function updateCalendar() {
+            document.querySelectorAll('.grey-value-box').forEach(box => box.innerHTML = '');
+
+            const tableRows = document.querySelectorAll('#masterTable tbody tr:not(.category-header)');
+            let uncheckedCount = 0;
+
+            tableRows.forEach(row => {
+                const cells = row.cells;
+                const raceName = cells[0].innerText.trim();
+                const surface = cells[1].innerText.trim().toLowerCase();
+                const distance = cells[2].innerText.trim().toLowerCase();
+                const dateCat = cells[3].innerText.trim();
+                const tierString = cells[4].innerText.trim();
+                
+                const checkbox = cells[5].querySelector('input[type="checkbox"]');
+                const isHidden = checkbox.checked;
+
+                if (!isHidden) uncheckedCount++;
+
+                if (!isHidden && raceName !== "") {
+                    tiers.forEach(tier => {
+                        if (tierString.includes(tier)) {
+                            const targetId = `${tier}-${dateCat.replace(' ', '-')}`;
+                            const targetCell = document.getElementById(targetId);
+
+                            if (targetCell) {
+                                const textLine = document.createElement('div');
+                                textLine.innerText = raceName;
+                                textLine.classList.add('clickable-race');
+                                
+                                // Clicking grid text checks the box in table
+                                textLine.onclick = function() {
+                                    pushStateToUndo();
+                                    checkbox.checked = !checkbox.checked;
+                                    updateCalendar();
+                                    currentState = getCurrentState();
+                                };
+
+                                if (surface === 'dirt') textLine.classList.add('surface-dirt');
+                                if (['sprint', 'mile', 'medium', 'long'].includes(distance)) {
+                                    textLine.classList.add(`distance-${distance}`);
+                                }
+                                targetCell.appendChild(textLine);
+                            }
+                        }
+                    });
+                }
+            });
+            
+            allChecked = (uncheckedCount === 0);
+            document.getElementById('toggleAllBtn').innerText = allChecked ? "Uncheck All" : "Check All";
+        }
+
+        // Initialize script logic
+        buildCalendarStructures();
+        updateCalendar();
+        currentState = getCurrentState();
+    </script>
+</body>
+</html>
